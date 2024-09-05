@@ -25,7 +25,7 @@ struct variotApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ConnectView()
         }
         .modelContainer(sharedModelContainer)
     }

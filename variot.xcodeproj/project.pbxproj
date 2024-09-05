@@ -8,20 +8,20 @@
 
 /* Begin PBXBuildFile section */
 		343F4EE22C88E3850085FB08 /* variotApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343F4EE12C88E3850085FB08 /* variotApp.swift */; };
-		343F4EE42C88E3850085FB08 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343F4EE32C88E3850085FB08 /* ContentView.swift */; };
+		343F4EE42C88E3850085FB08 /* ConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343F4EE32C88E3850085FB08 /* ConnectView.swift */; };
 		343F4EE82C88E3870085FB08 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 343F4EE72C88E3870085FB08 /* Assets.xcassets */; };
 		343F4EEB2C88E3870085FB08 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 343F4EEA2C88E3870085FB08 /* Preview Assets.xcassets */; };
-		343F4EF22C88FBF70085FB08 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343F4EF12C88FBF70085FB08 /* HomeView.swift */; };
+		343F4EF52C8A4B5D0085FB08 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343F4EF42C8A4B5D0085FB08 /* HomeView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		343F4EDE2C88E3850085FB08 /* variot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = variot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		343F4EE12C88E3850085FB08 /* variotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = variotApp.swift; sourceTree = "<group>"; };
-		343F4EE32C88E3850085FB08 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		343F4EE32C88E3850085FB08 /* ConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectView.swift; sourceTree = "<group>"; };
 		343F4EE72C88E3870085FB08 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		343F4EEA2C88E3870085FB08 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		343F4EF12C88FBF70085FB08 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		343F4EF32C89EAB50085FB08 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		343F4EF42C8A4B5D0085FB08 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -56,10 +56,10 @@
 			children = (
 				343F4EF32C89EAB50085FB08 /* Info.plist */,
 				343F4EE12C88E3850085FB08 /* variotApp.swift */,
-				343F4EE32C88E3850085FB08 /* ContentView.swift */,
+				343F4EE32C88E3850085FB08 /* ConnectView.swift */,
 				343F4EE72C88E3870085FB08 /* Assets.xcassets */,
 				343F4EE92C88E3870085FB08 /* Preview Content */,
-				343F4EF12C88FBF70085FB08 /* HomeView.swift */,
+				343F4EF42C8A4B5D0085FB08 /* HomeView.swift */,
 			);
 			path = variot;
 			sourceTree = "<group>";
@@ -142,8 +142,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				343F4EF22C88FBF70085FB08 /* HomeView.swift in Sources */,
-				343F4EE42C88E3850085FB08 /* ContentView.swift in Sources */,
+				343F4EF52C8A4B5D0085FB08 /* HomeView.swift in Sources */,
+				343F4EE42C88E3850085FB08 /* ConnectView.swift in Sources */,
 				343F4EE22C88E3850085FB08 /* variotApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
