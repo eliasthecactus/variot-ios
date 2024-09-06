@@ -10,11 +10,14 @@ import CoreBluetooth
 
 struct HomeView: View {
     @EnvironmentObject var serviceBrowser: BluetoothServiceBrowser
-    var device: String
+    var device: CBPeripheral
 
     var body: some View {
         VStack {
-            Text("Connected to: \(device)")
+            Text("Connected to: \(device.identifier)")
+                .padding()
+
+            // Show sensor data received from the Arduino
             if serviceBrowser.sensorData.isEmpty {
                 Text("Waiting for sensor data...")
                     .padding()
@@ -25,7 +28,7 @@ struct HomeView: View {
         }
         .onAppear {
             if let peripheral = serviceBrowser.connectedPeripheral {
-                print("Attempting to connect to: \(peripheral)")
+                print("Attempting to connect to: \(device.identifier)")
                 serviceBrowser.connect(to: peripheral)
             } else {
                 print("No connected peripheral found.")
@@ -35,6 +38,3 @@ struct HomeView: View {
 }
 
 
-#Preview {
-    HomeView(device: "Vario-769789").environmentObject(BluetoothServiceBrowser())
-}
