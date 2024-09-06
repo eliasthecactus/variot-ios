@@ -5,7 +5,17 @@ class BluetoothServiceBrowser: NSObject, ObservableObject, CBCentralManagerDeleg
     @Published var devices: [Device] = []
     @Published var isLoading: Bool = false
     @Published var discoveryTimedOut: Bool = false
-    @Published var sensorData: String = ""
+    
+    private var altitudeCharacteristic: CBCharacteristic?
+    private var pressureCharacteristic: CBCharacteristic?
+    private var angleCharacteristic: CBCharacteristic?
+    
+    @Published var altitudeData: String = ""
+    @Published var temperatureData: String = ""
+    @Published var angleData: String = ""
+    
+    @Published var test: [Date: String] = [:]
+
 
     private var centralManager: CBCentralManager!
     private var discoveredPeripherals: [CBPeripheral] = []
@@ -58,13 +68,22 @@ class BluetoothServiceBrowser: NSObject, ObservableObject, CBCentralManagerDeleg
     }
 
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
-        let deviceName = peripheral.name ?? "Unknown Device"
-        let deviceID = peripheral.identifier.uuidString
-        
-        if !discoveredPeripherals.contains(peripheral) {
-            let device = Device(name: deviceName, id: deviceID, peripheral: peripheral)
-            devices.append(device)
-            discoveredPeripherals.append(peripheral)
+        // Check if the advertisement data contains any service UUIDs
+        if let serviceUUIDs = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] {
+            for serviceUUID in serviceUUIDs {
+                // Check if the service UUID starts with "19B10000"
+                if serviceUUID.uuidString.hasPrefix("19B10000") {
+                    let deviceName = peripheral.name ?? "Unknown Device"
+                    let deviceID = peripheral.identifier.uuidString
+                    
+                    if !discoveredPeripherals.contains(peripheral) {
+                        let device = Device(name: deviceName, id: deviceID, peripheral: peripheral)
+                        devices.append(device)
+                        discoveredPeripherals.append(peripheral)
+                    }
+                    break // Stop checking once we find a match
+                }
+            }
         }
     }
     
@@ -98,11 +117,20 @@ class BluetoothServiceBrowser: NSObject, ObservableObject, CBCentralManagerDeleg
             print("Error discovering characteristics: \(error!.localizedDescription)")
             return
         }
-        print("check5")
-
+        
         for characteristic in service.characteristics ?? [] {
+            print("Discovered characteristic: \(characteristic.uuid.uuidString)")
             if characteristic.properties.contains(.read) || characteristic.properties.contains(.notify) {
-                dataCharacteristic = characteristic
+                switch characteristic.uuid.uuidString {
+                case "19B10001-E8F2-537E-4F6C-D104768A1214":
+                    altitudeCharacteristic = characteristic
+                case "19B10002-E8F2-537E-4F6C-D104768A1214":
+                    pressureCharacteristic = characteristic
+                case "19B10003-E8F2-537E-4F6C-D104768A1214":
+                    angleCharacteristic = characteristic
+                default:
+                    break
+                }
                 peripheral.setNotifyValue(true, for: characteristic)
                 print("Subscribed to notifications for \(characteristic.uuid)")
             } else {
@@ -110,30 +138,40 @@ class BluetoothServiceBrowser: NSObject, ObservableObject, CBCentralManagerDeleg
             }
         }
     }
+
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         guard error == nil else {
             print("Error updating value: \(error!.localizedDescription)")
             return
         }
 
-        // Check if the characteristic is the one you're interested in
-        if characteristic == dataCharacteristic {
-            print("check1")
+        if characteristic == altitudeCharacteristic {
             if let data = characteristic.value {
-                // Convert the data to a string
-                let dataString = String(data: data, encoding: .utf8) ?? "Unknown data"
-                
-                // Update the UI with sensor data
-                DispatchQueue.main.async {
-                    self.sensorData = dataString
-                }
-
-                print("Received data: \(dataString)")
+                let altitudeString = String(data: data, encoding: .utf8) ?? "Unknown data"
+                print("Received altitude data: \(altitudeString)")
+                self.altitudeData = altitudeString
+                self.test[Date()] = altitudeString
+                // Update your altitude data
+            }
+        } else if characteristic == pressureCharacteristic {
+            if let data = characteristic.value {
+                let temperatureString = String(data: data, encoding: .utf8) ?? "Unknown data"
+                print("Received Temperature data: \(temperatureString)")
+                self.temperatureData = temperatureString
+                // Update your pressure data
+            }
+        } else if characteristic == angleCharacteristic {
+            if let data = characteristic.value {
+                let angleString = String(data: data, encoding: .utf8) ?? "Unknown data"
+                print("Received angle data: \(angleString)")
+                self.angleData = angleString
+                // Update your angle data
             }
         } else {
-            print("check2")
+            print("Unknown characteristic updated")
         }
     }
+    
     
     func connect(to peripheral: CBPeripheral) {
         centralManager.stopScan()
@@ -157,22 +195,32 @@ struct Device: Identifiable, Hashable {
 
 
 
+
 struct ConnectView: View {
     @StateObject private var serviceBrowser = BluetoothServiceBrowser()
     @State private var selectedDevice: Device?
-    @State private var navigateToHomeView = false
-
+    
     var body: some View {
-        NavigationStack {
-            VStack {
+        VStack {
+            if let device = selectedDevice {
+                // Directly display the HomeView if a device is selected
+                HomeView(device: device)
+                    .environmentObject(serviceBrowser)
+            } else {
+                Text("Connect a device")
+                    .font(.largeTitle)
+                Spacer()
+
                 if serviceBrowser.devices.isEmpty {
                     if serviceBrowser.discoveryTimedOut {
                         Text("No devices found. Please try again.")
                             .foregroundColor(.red)
                             .padding()
                     } else {
-                        Text("Searching for devices...")
-                            .padding()
+                        if serviceBrowser.isLoading {
+                            ProgressView("Connecting to device...")
+                                .padding()
+                        }
                     }
                 } else {
                     List(serviceBrowser.devices) { device in
@@ -180,34 +228,19 @@ struct ConnectView: View {
                             serviceBrowser.connect(to: device.peripheral)
                             selectedDevice = device
                             serviceBrowser.isLoading = true
-                            
-                            // Trigger navigation upon connection
-                            navigateToHomeView = true
                         } label: {
                             Text(device.name)
                         }
                     }
                 }
-
-                // Loading indicator while connecting
-                if serviceBrowser.isLoading {
-                    ProgressView("Connecting to device...")
-                        .padding()
-                }
             }
-            .navigationTitle("Discover Devices")
-            .onAppear {
-                serviceBrowser.startDiscovery()
-            }
-            .onDisappear {
-                serviceBrowser.stopDiscovery()
-            }
-            .navigationDestination(isPresented: $navigateToHomeView) {
-                if let device = selectedDevice {
-                    HomeView(device: device.peripheral)
-                        .environmentObject(serviceBrowser)
-                }
-            }
+        }
+        .onAppear {
+            serviceBrowser.startDiscovery()
+        }
+        .onDisappear {
+            serviceBrowser.stopDiscovery()  // Stop scanning when view disappears
+            serviceBrowser.connectedPeripheral = nil // Reset the connected peripheral
         }
     }
 }
