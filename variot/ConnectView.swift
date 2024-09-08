@@ -5,7 +5,8 @@ class BluetoothServiceBrowser: NSObject, ObservableObject, CBCentralManagerDeleg
     @Published var devices: [Device] = []
     @Published var isLoading: Bool = false
     @Published var discoveryTimedOut: Bool = false
-    
+    @Published var isConnected: Bool = false  // Track the connection status
+
     private var altitudeCharacteristic: CBCharacteristic?
     private var pressureCharacteristic: CBCharacteristic?
     private var angleCharacteristic: CBCharacteristic?
@@ -46,12 +47,16 @@ class BluetoothServiceBrowser: NSObject, ObservableObject, CBCentralManagerDeleg
         centralManager.scanForPeripherals(withServices: nil, options: nil)
         
         timeoutTask = Task {
-            await Task.sleep(20 * 1_000_000_000)
+            await Task.sleep(20 * 1_000_000_000) // 20 seconds timeout
             if devices.isEmpty {
                 DispatchQueue.main.async {
                     self.isLoading = false
                     self.discoveryTimedOut = true
+                    self.stopDiscovery() // Stop discovery after timeout
                 }
+            } else {
+                // Discovery succeeded, stop scanning
+                self.stopDiscovery()
             }
         }
     }
@@ -60,11 +65,15 @@ class BluetoothServiceBrowser: NSObject, ObservableObject, CBCentralManagerDeleg
         centralManager.stopScan()
         timeoutTask?.cancel()
         timeoutTask = nil
-        devices.removeAll()
-        if let peripheral = connectedPeripheral {
-            centralManager.cancelPeripheralConnection(peripheral)
+        print("Stopped discovery.")
+    }
+    
+    func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
+        print("Disconnected from " + (peripheral.name ?? "unknown"))
+        DispatchQueue.main.async {
+            self.isConnected = false  // Set isConnected to false when disconnected
+            self.connectedPeripheral = nil  // Clear the connected peripheral
         }
-        print("Stopped discovery and cleared devices list...")
     }
 
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
@@ -96,6 +105,7 @@ class BluetoothServiceBrowser: NSObject, ObservableObject, CBCentralManagerDeleg
         // Trigger the update for navigating to HomeView after connection
         DispatchQueue.main.async {
             self.isLoading = false
+            self.isConnected = true // Set isConnected to true after successful connection
         }
     }
     
@@ -194,18 +204,24 @@ struct Device: Identifiable, Hashable {
 }
 
 
-
-
 struct ConnectView: View {
     @StateObject private var serviceBrowser = BluetoothServiceBrowser()
     @State private var selectedDevice: Device?
-    
+    @State private var isConnecting = false
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+
     var body: some View {
         VStack {
-            if let device = selectedDevice {
-                // Directly display the HomeView if a device is selected
+            if serviceBrowser.isConnected, let device = selectedDevice {
                 HomeView(device: device)
                     .environmentObject(serviceBrowser)
+                    .onAppear {
+                        // Handle connection loss, move back to ConnectView if disconnected
+                        if !serviceBrowser.isConnected {
+                            selectedDevice = nil  // Reset selectedDevice on disconnect
+                        }
+                    }
             } else {
                 Text("Connect a device")
                     .font(.largeTitle)
@@ -213,21 +229,27 @@ struct ConnectView: View {
 
                 if serviceBrowser.devices.isEmpty {
                     if serviceBrowser.discoveryTimedOut {
-                        Text("No devices found. Please try again.")
-                            .foregroundColor(.red)
-                            .padding()
-                    } else {
-                        if serviceBrowser.isLoading {
-                            ProgressView("Connecting to device...")
-                                .padding()
+                        Button(action: {
+                            serviceBrowser.startDiscovery()
+                        }) {
+                            Label("Reload", systemImage: "arrow.clockwise")
+                                .labelStyle(.iconOnly)
                         }
+                    } else {
+                        Text("Scanning for devices...")
+                    }
+                } else if isConnecting {
+                    VStack {
+                        Text("Connecting to \(selectedDevice?.name ?? "device")...")
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
                     }
                 } else {
                     List(serviceBrowser.devices) { device in
                         Button {
+                            isConnecting = true
                             serviceBrowser.connect(to: device.peripheral)
                             selectedDevice = device
-                            serviceBrowser.isLoading = true
                         } label: {
                             Text(device.name)
                         }
@@ -239,12 +261,43 @@ struct ConnectView: View {
             serviceBrowser.startDiscovery()
         }
         .onDisappear {
-            serviceBrowser.stopDiscovery()  // Stop scanning when view disappears
-            serviceBrowser.connectedPeripheral = nil // Reset the connected peripheral
+            serviceBrowser.stopDiscovery()
+            serviceBrowser.connectedPeripheral = nil
+        }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if serviceBrowser.isLoading && !isConnecting {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+                }
+            }
+        }
+        .alert(isPresented: $showAlert) {
+            Alert(title: Text("Connecting"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+        }
+        .onChange(of: serviceBrowser.isLoading) { isLoading in
+            if !isLoading {
+                if isConnecting {
+                    alertMessage = "Connection established successfully."
+                    showAlert = true
+                    isConnecting = false
+                }
+            }
+        }
+        .onChange(of: serviceBrowser.discoveryTimedOut) { timedOut in
+            if timedOut {
+                alertMessage = "No devices found. Please try again."
+                showAlert = true
+            }
+        }
+        .onChange(of: serviceBrowser.isConnected) { connected in
+            if !connected {
+                selectedDevice = nil  // Reset the view when the connection is lost
+                isConnecting = false
+            }
         }
     }
 }
-
-#Preview {
-    ConnectView()
-}
+    #Preview {
+        ConnectView()
+    }
