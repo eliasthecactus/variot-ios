@@ -6,7 +6,8 @@ class BluetoothServiceBrowser: NSObject, ObservableObject, CBCentralManagerDeleg
     @Published var isLoading: Bool = false
     @Published var discoveryTimedOut: Bool = false
     @Published var isConnected: Bool = false  // Track the connection status
-
+    
+    public var buzzerControlCharacteristic: CBCharacteristic?
     private var altitudeCharacteristic: CBCharacteristic?
     private var pressureCharacteristic: CBCharacteristic?
     private var angleCharacteristic: CBCharacteristic?
@@ -68,6 +69,12 @@ class BluetoothServiceBrowser: NSObject, ObservableObject, CBCentralManagerDeleg
         print("Stopped discovery.")
     }
     
+    func mute(peripheral: CBPeripheral, buzzerControlCharacteristic: CBCharacteristic, value: Bool) {
+        peripheral.writeValue(Data([value ? 1 : 0]), for: buzzerControlCharacteristic, type: .withResponse)
+        print("Change Buzzer")
+    }
+
+    
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         print("Disconnected from " + (peripheral.name ?? "unknown"))
         DispatchQueue.main.async {
@@ -127,9 +134,11 @@ class BluetoothServiceBrowser: NSObject, ObservableObject, CBCentralManagerDeleg
             print("Error discovering characteristics: \(error!.localizedDescription)")
             return
         }
-        
+
         for characteristic in service.characteristics ?? [] {
             print("Discovered characteristic: \(characteristic.uuid.uuidString)")
+
+            // Check if the characteristic supports .read or .notify
             if characteristic.properties.contains(.read) || characteristic.properties.contains(.notify) {
                 switch characteristic.uuid.uuidString {
                 case "19B10001-E8F2-537E-4F6C-D104768A1214":
@@ -141,14 +150,22 @@ class BluetoothServiceBrowser: NSObject, ObservableObject, CBCentralManagerDeleg
                 default:
                     break
                 }
+                // Subscribe to notifications for readable/notifiable characteristics
                 peripheral.setNotifyValue(true, for: characteristic)
                 print("Subscribed to notifications for \(characteristic.uuid)")
+            } else if characteristic.properties.contains(.write) {
+                switch characteristic.uuid.uuidString {
+                case "19B10004-E8F2-537E-4F6C-D104768A1214":
+                    buzzerControlCharacteristic = characteristic
+                    print("Buzzer control characteristic supports write only")
+                default:
+                    break
+                }
             } else {
                 print("Characteristic \(characteristic.uuid) does not support read/notify")
             }
         }
     }
-
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         guard error == nil else {
             print("Error updating value: \(error!.localizedDescription)")
@@ -298,6 +315,8 @@ struct ConnectView: View {
         }
     }
 }
+
+
     #Preview {
         ConnectView()
     }

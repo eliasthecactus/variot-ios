@@ -26,7 +26,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 struct HomeView: View {
     @EnvironmentObject var serviceBrowser: BluetoothServiceBrowser
     var device: Device  // Device now includes name
-    @State private var muted = false  // State for the muted button
+    @State private var buzzerEnabled = true  // State for the muted button
 
     @StateObject private var locationManager = LocationManager()
     @State private var region = MKCoordinateRegion(
@@ -70,18 +70,22 @@ struct HomeView: View {
                         HStack {
                             Image(systemName: "thermometer.sun.fill")
                                 .font(.largeTitle)
-                            Text(serviceBrowser.temperatureData)
-                                .font(.largeTitle)
-                        }
-                        HStack {
-                            Image(systemName: "arrow.right.circle.fill")
-                                .font(.largeTitle)
-                            Text(serviceBrowser.angleData)
+                            Text(serviceBrowser.temperatureData+"°C")
                                 .font(.largeTitle)
                         }
                     }
                     Spacer()
+                    VStack(alignment: .trailing) {
+                        HStack {
+                            Text(serviceBrowser.angleData)
+                                .font(.largeTitle)
+                            Image(systemName: "arrow.right.circle.fill")
+                                .font(.largeTitle)
+
+                        }
+                    }
                 }
+                .padding(.horizontal, 10)
                 Spacer()
                 
                 // Recenter button in the bottom-right corner
@@ -89,10 +93,18 @@ struct HomeView: View {
                     Spacer()
                     VStack {
                         Button(action: {
-                            muted = !muted;
+                            buzzerEnabled.toggle()
+                            
+                            // Send write request to buzzer control characteristic
+                            if let buzzerControlCharacteristic = serviceBrowser.buzzerControlCharacteristic {
+                                serviceBrowser.mute(peripheral: device.peripheral, buzzerControlCharacteristic: buzzerControlCharacteristic, value: buzzerEnabled)
+                            } else {
+                                // Handle the case where buzzerControlCharacteristic is nil
+                                print("Buzzer control characteristic is nil")
+                            }
                             }
                         ) {
-                            Image(systemName: muted ? "speaker.slash" : "speaker.wave.2")
+                            Image(systemName: buzzerEnabled ? "speaker.wave.2" : "speaker.slash")
                                 .font(.title)
                                 .padding()
                                 .shadow(radius: 10)
@@ -122,3 +134,4 @@ struct HomeView: View {
         }
     }
 }
+
