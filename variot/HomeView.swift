@@ -6,12 +6,14 @@ import CoreBluetooth
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
     @Published var location: CLLocation? = nil
+    @Published var heading: CLHeading? = nil  // Published heading data
 
     override init() {
         super.init()
         locationManager.delegate = self
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
+        locationManager.startUpdatingHeading()  // Start updating the heading (compass)
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -20,6 +22,48 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Failed to find user's location: \(error.localizedDescription)")
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        heading = newHeading  // Update heading when new data is available
+    }
+}
+
+struct CompassView: View {
+    var heading: CLHeading?  // The heading data
+    
+    var body: some View {
+        ZStack {
+            // Compass background (a simple circle)
+            Circle()
+                .fill(Color.gray.opacity(0.2))
+                .frame(width: 100, height: 100)
+                .overlay(
+                    // Circle with cardinal direction labels (N, E, S, W)
+                    ZStack {
+                        Text("N").position(x: 50, y: 10)  // North
+                        Text("E").position(x: 90, y: 50)  // East
+                        Text("S").position(x: 50, y: 90)  // South
+                        Text("W").position(x: 10, y: 50)  // West
+                    }
+                    .font(.headline)
+                    .foregroundColor(.black)
+                )
+            
+            // Compass needle (rotates based on the heading)
+            if let heading = heading {
+                Image(systemName: "arrow.up")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 40, height: 40)
+                    .rotationEffect(Angle(degrees: heading.magneticHeading))  // Rotate based on heading
+                    .animation(.easeInOut, value: heading.magneticHeading)
+            } else {
+                Text("N/A")
+                    .foregroundColor(.red)
+            }
+        }
+        .shadow(radius: 5)
     }
 }
 
@@ -77,8 +121,14 @@ struct HomeView: View {
                     Spacer()
                     VStack(alignment: .trailing) {
                         HStack {
-                            Text(serviceBrowser.angleData)
-                                .font(.largeTitle)
+                            // Use phone's compass data instead of Bluetooth angle data
+                            if let heading = locationManager.heading {
+                                Text(String(format: "%.1f°", heading.magneticHeading))  // Display magnetic heading
+                                    .font(.largeTitle)
+                            } else {
+                                Text("No heading data")
+                                    .font(.largeTitle)
+                            }
                             Image(systemName: "arrow.right.circle.fill")
                                 .font(.largeTitle)
 
@@ -88,8 +138,12 @@ struct HomeView: View {
                 .padding(.horizontal, 10)
                 Spacer()
                 
-                // Recenter button in the bottom-right corner
+                // Recenter button and compass in the bottom-right and bottom-left corners
                 HStack {
+                    // Add the compass to the bottom-left corner
+                    CompassView(heading: locationManager.heading)
+                        .padding()
+                    
                     Spacer()
                     VStack {
                         Button(action: {
@@ -110,7 +164,6 @@ struct HomeView: View {
                                 .shadow(radius: 10)
                                 .background(Circle().fill(Color.white))
                         }
-                        //Spacer()
                         Button(action: {
                             if let location = locationManager.location {
                                 withAnimation(.easeInOut(duration: 1.0)) {
@@ -125,13 +178,9 @@ struct HomeView: View {
                                 .background(Circle().fill(Color.white))
                         }
                     }
-
                 }
-                //.background(Color.white)
-                //.cornerRadius(100)
                 .padding(.horizontal, 20)
             }
         }
     }
 }
-
