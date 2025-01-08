@@ -84,23 +84,26 @@ class BluetoothServiceBrowser: NSObject, ObservableObject, CBCentralManagerDeleg
     }
 
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
+        let deviceName = peripheral.name ?? "Unknown Device"
+        let deviceID = peripheral.identifier.uuidString
+
+        print(deviceName + ": " + deviceID)
         // Check if the advertisement data contains any service UUIDs
-        if let serviceUUIDs = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] {
-            for serviceUUID in serviceUUIDs {
+        //if let serviceUUIDs = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] {
+            //for serviceUUID in serviceUUIDs {
                 // Check if the service UUID starts with "19B10000"
-                if serviceUUID.uuidString.hasPrefix("19B10000") {
-                    let deviceName = peripheral.name ?? "Unknown Device"
-                    let deviceID = peripheral.identifier.uuidString
-                    
+                //if serviceUUID.uuidString.hasPrefix("19B10000") {
+                if deviceName.hasPrefix("Vario") {
+
                     if !discoveredPeripherals.contains(peripheral) {
                         let device = Device(name: deviceName, id: deviceID, peripheral: peripheral)
                         devices.append(device)
                         discoveredPeripherals.append(peripheral)
                     }
-                    break // Stop checking once we find a match
+                    //break // Stop checking once we find a match
                 }
-            }
-        }
+            //}
+        //}
     }
     
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
